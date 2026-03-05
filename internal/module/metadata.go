@@ -1,5 +1,10 @@
 package module
 
+import (
+	"encoding/json"
+	"os"
+)
+
 type Metadata struct {
 	Name            string            `json:"name"`
 	Version         string            `json:"version"`
@@ -52,9 +57,24 @@ func NewMetadata(name string, author string) Metadata {
 }
 
 func ReadMetadata(path string) (Metadata, error) {
-	return Metadata{}, nil
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return Metadata{}, err
+	}
+
+	metadata := Metadata{}
+	err = json.Unmarshal(content, &metadata)
+	if err != nil {
+		return Metadata{}, err
+	}
+	return metadata, nil
 }
 
 func (m Metadata) Write(path string) error {
-	return nil
+	output, err := json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, output, 0644)
 }
