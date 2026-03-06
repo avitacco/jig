@@ -38,6 +38,7 @@ type OperatingSystem struct {
 func NewMetadata(name string, author string) Metadata {
 	return Metadata{
 		Name:         name,
+		Version:      "0.1.0",
 		Author:       author,
 		License:      "Apache-2.0",
 		Summary:      "",
@@ -71,10 +72,15 @@ func ReadMetadata(path string) (Metadata, error) {
 }
 
 func (m Metadata) Write(path string) error {
-	output, err := json.MarshalIndent(m, "", "  ")
+	f, err := os.Create(path)
 	if err != nil {
 		return err
 	}
+	defer f.Close()
 
-	return os.WriteFile(path, output, 0644)
+	// Using json.Encoder here instead of json.MarshalIndent to avoid escaping HTML
+	encoder := json.NewEncoder(f)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(m)
 }
