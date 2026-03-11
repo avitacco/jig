@@ -40,6 +40,11 @@ func newRenderer(templateDir string) *template.Renderer {
 	return template.NewRenderer()
 }
 
+func BackupDir(path string) error {
+	backupName := fmt.Sprintf("%s.bak.%s", path, time.Now().Format("20060102150405"))
+	return os.Rename(path, backupName)
+}
+
 func RenderTemplates(renderer *template.Renderer, templateFiles []TemplateFile, data any, overwrite bool) error {
 	for _, template := range templateFiles {
 		// Check if the destination file already exists and if it should be overwritten.
@@ -83,11 +88,8 @@ func NewModule(opts Options) error {
 		if !opts.Force {
 			return fmt.Errorf("directory %s already exists, use --force to replace it", moduleDir)
 		}
-		backupName := fmt.Sprintf("%s.bak.%s", moduleDir, time.Now().Format("20060102150405"))
-		if err := os.Rename(moduleDir, backupName); err != nil {
-			return fmt.Errorf("failed to rename existing directory %s to %s: %w", moduleDir, backupName, err)
-		}
-		fmt.Printf("Renamed existing directory %s to %s\n", moduleDir, backupName)
+		err = BackupDir(moduleDir)
+		fmt.Printf("Renamed existing directory %s\n", moduleDir)
 	}
 
 	if err := os.MkdirAll(moduleDir, 0755); err != nil {

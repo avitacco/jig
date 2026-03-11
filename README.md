@@ -32,6 +32,8 @@ planned functionality.
 | `new`              | `transport`    | 🔲 Planned |
 | `--skip-interview` |                | ✅ Working  |
 | Template override  |                | ✅ Working  |
+| `templates`        | `dump`         | ✅ Working  |
+| `templates`        | `resolve`      | 🔲 Planned |
 | `build`            |                | 🔲 Planned |
 | `release`          |                | 🔲 Planned |
 
@@ -63,7 +65,7 @@ Scaffolds a new Puppet module with the standard directory structure and
 metadata.
 
 ```
-jig new module <name> [flags]
+jig new module <n> [flags]
 ```
 
 jig will walk you through an interactive interview to collect module metadata.
@@ -88,7 +90,7 @@ Generates a new Puppet class manifest and its rspec-puppet spec file inside
 the current module directory.
 
 ```
-jig new class <name>
+jig new class <n>
 ```
 
 The class name follows standard Puppet naming conventions. Namespaced names
@@ -113,6 +115,26 @@ The following flag is available on all `jig new` subcommands:
 **Module naming:** jig validates module names against Puppet's naming
 conventions. Violations produce a warning but do not stop scaffolding.
 
+### `jig templates dump`
+
+Extracts all embedded default templates to a directory on disk. This is useful
+as a starting point for creating your own custom templates. If the destination
+directory already exists it will be renamed with a timestamp suffix before
+writing.
+
+```
+jig templates dump <destination>
+```
+
+For example:
+
+```bash
+jig templates dump ~/.config/jig/templates
+```
+
+You can then edit the files in the destination directory and point jig at them
+using `--template-dir` or the `template_dir` config key.
+
 ## Template Overrides
 
 jig embeds default templates for all generated files. If you want to customise
@@ -121,6 +143,9 @@ found in your custom directory takes precedence over the embedded default.
 Templates not present in your custom directory fall back to the embedded
 defaults automatically, so you only need to include the files you want to
 change.
+
+The easiest way to get started is to run `jig templates dump` to extract the
+default templates, then edit the ones you want to change.
 
 ### Template directory structure
 

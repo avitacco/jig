@@ -38,6 +38,7 @@ func Execute() error {
 	rootCmd.PersistentFlags().Bool("debug", false, "Enable debug output")
 
 	rootCmd.AddCommand(app.newCmd())
+	rootCmd.AddCommand(app.templatesCmd())
 
 	return rootCmd.Execute()
 }
