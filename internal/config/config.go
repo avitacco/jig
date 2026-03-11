@@ -13,6 +13,7 @@ type Config struct {
 	Author        string `mapstructure:"author"`
 	License       string `mapstructure:"license"`
 	ForgeToken    string `mapstructure:"forge_token"`
+	TemplateDir   string `mapstructure:"template_dir"`
 }
 
 func Load(path string, logger *logrus.Logger) (Config, error) {

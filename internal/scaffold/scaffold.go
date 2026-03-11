@@ -12,14 +12,55 @@ import (
 )
 
 type Options struct {
-	ForgeUser string
-	Name      string
-	Author    string
-	License   string
-	Summary   string
-	Source    string
-	Force     bool
-	TargetDir string
+	ForgeUser   string
+	Name        string
+	Author      string
+	License     string
+	Summary     string
+	Source      string
+	Force       bool
+	TargetDir   string
+	TemplateDir string
+}
+
+type ComponentOptions struct {
+	Name        string
+	TemplateDir string
+}
+
+type TemplateFile struct {
+	FileName    string
+	Destination string
+}
+
+func newRenderer(templateDir string) *template.Renderer {
+	if templateDir != "" {
+		return template.NewRendererWithExternalDir(templateDir)
+	}
+	return template.NewRenderer()
+}
+
+func RenderTemplates(renderer *template.Renderer, templateFiles []TemplateFile, data any, overwrite bool) error {
+	for _, template := range templateFiles {
+		// Check if the destination file already exists and if it should be overwritten.
+		if !overwrite {
+			if _, err := os.Stat(template.Destination); err == nil {
+				return fmt.Errorf("file %s already exists", template.Destination)
+			}
+		}
+		// Render the template and write it to the destination file.
+		rendered, err := renderer.Render(template.FileName, data)
+		if err != nil {
+			return fmt.Errorf("failed to render template %s: %w", template.FileName, err)
+		}
+		if err := os.MkdirAll(filepath.Dir(template.Destination), 0755); err != nil {
+			return fmt.Errorf("failed to create directory %s: %w", filepath.Dir(template.Destination), err)
+		}
+		if err := os.WriteFile(template.Destination, []byte(rendered), 0644); err != nil {
+			return fmt.Errorf("failed to write file %s: %w", template.Destination, err)
+		}
+	}
+	return nil
 }
 
 func NewModule(opts Options) error {
@@ -63,21 +104,26 @@ func NewModule(opts Options) error {
 		return fmt.Errorf("failed to write metadata.json: %w", err)
 	}
 
-	renderer := template.NewRenderer()
+	renderer := newRenderer(opts.TemplateDir)
 
-	templates := map[string]string{
-		"module/manifests/init.pp":      filepath.Join(moduleDir, "manifests", "init.pp"),
-		"module/README.md":              filepath.Join(moduleDir, "README.md"),
-		"module/CHANGELOG.md":           filepath.Join(moduleDir, "CHANGELOG.md"),
-		"module/spec/class_spec.rb":     filepath.Join(moduleDir, "spec", "classes", "init_spec.rb"),
-		"module/Gemfile":                filepath.Join(moduleDir, "Gemfile"),
-		"module/Rakefile":               filepath.Join(moduleDir, "Rakefile"),
-		"module/gitignore":              filepath.Join(moduleDir, ".gitignore"),
-		"module/pdkignore":              filepath.Join(moduleDir, ".pdkignore"),
-		"module/rubocop.yml":            filepath.Join(moduleDir, ".rubocop.yml"),
-		"module/hiera.yaml":             filepath.Join(moduleDir, "hiera.yaml"),
-		"module/spec/spec_helper.rb":    filepath.Join(moduleDir, "spec", "spec_helper.rb"),
-		"module/spec/default_facts.yml": filepath.Join(moduleDir, "spec", "default_facts.yml"),
+	templates := []TemplateFile{
+		{FileName: "module/manifests/init.pp", Destination: filepath.Join(moduleDir, "manifests", "init.pp")},
+		{FileName: "module/README.md", Destination: filepath.Join(moduleDir, "README.md")},
+		{FileName: "module/CHANGELOG.md", Destination: filepath.Join(moduleDir, "CHANGELOG.md")},
+		{FileName: "module/spec/class_spec.rb", Destination: filepath.Join(moduleDir, "spec", "classes", "init_spec.rb")},
+		{FileName: "module/Gemfile", Destination: filepath.Join(moduleDir, "Gemfile")},
+		{FileName: "module/Rakefile", Destination: filepath.Join(moduleDir, "Rakefile")},
+		{FileName: "module/gitignore", Destination: filepath.Join(moduleDir, ".gitignore")},
+		{FileName: "module/pdkignore", Destination: filepath.Join(moduleDir, ".pdkignore")},
+		{FileName: "module/rubocop.yml", Destination: filepath.Join(moduleDir, ".rubocop.yml")},
+		{FileName: "module/hiera.yaml", Destination: filepath.Join(moduleDir, "hiera.yaml")},
+		{FileName: "module/spec/spec_helper.rb", Destination: filepath.Join(moduleDir, "spec", "spec_helper.rb")},
+		{FileName: "module/spec/default_facts.yml", Destination: filepath.Join(moduleDir, "spec", "default_facts.yml")},
+		{FileName: "common/gitkeep", Destination: filepath.Join(moduleDir, "data", ".gitkeep")},
+		{FileName: "common/gitkeep", Destination: filepath.Join(moduleDir, "examples", ".gitkeep")},
+		{FileName: "common/gitkeep", Destination: filepath.Join(moduleDir, "files", ".gitkeep")},
+		{FileName: "common/gitkeep", Destination: filepath.Join(moduleDir, "tasks", ".gitkeep")},
+		{FileName: "common/gitkeep", Destination: filepath.Join(moduleDir, "templates", ".gitkeep")},
 	}
 
 	data := struct {
@@ -92,39 +138,15 @@ func NewModule(opts Options) error {
 		ClassName:  opts.Name,
 	}
 
-	for tmplName, destPath := range templates {
-		rendered, err := renderer.Render(tmplName, data)
-		if err != nil {
-			return fmt.Errorf("failed to render template %s: %w", tmplName, err)
-		}
-		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
-			return fmt.Errorf("failed to create directory for %s: %w", destPath, err)
-		}
-		if err := os.WriteFile(destPath, []byte(rendered), 0644); err != nil {
-			return fmt.Errorf("failed to write %s: %w", destPath, err)
-		}
-	}
-
-	emptyDirs := []string{"data", "examples", "files", "tasks", "templates"}
-	for _, dir := range emptyDirs {
-		dest := filepath.Join(moduleDir, dir, ".gitkeep")
-		rendered, err := renderer.Render("common/gitkeep", nil)
-		if err != nil {
-			return fmt.Errorf("failed to render template %s: %w", "common/gitkeep", err)
-		}
-		if err := os.MkdirAll(filepath.Dir(dest), 0755); err != nil {
-			return fmt.Errorf("failed to create directory for %s: %w", dest, err)
-		}
-		if err := os.WriteFile(dest, []byte(rendered), 0644); err != nil {
-			return fmt.Errorf("failed to write %s: %w", dest, err)
-		}
+	if err := RenderTemplates(renderer, templates, data, opts.Force); err != nil {
+		return fmt.Errorf("failed to render templates: %w", err)
 	}
 
 	fmt.Printf("Created new module %s in %s\n", opts.Name, moduleDir)
 	return nil
 }
 
-func NewClass(name string) error {
+func NewClass(opts ComponentOptions) error {
 	// Get the cwd and check if it's a module directory (contains a metadata.json file)
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -144,18 +166,18 @@ func NewClass(name string) error {
 
 	// Figure out the filename for the class
 	// Needs to handle several cases,
-	// 1. module::classname (should raise an error, don't give module name)
+	// 1. module::classname (should raise an error, don't give module opts)
 	// 2. sub::module::class::names (should be converted to sub/module/class/names.pp)
 	// 3. classname (should be converted to classname.pp)
-	parts := strings.Split(name, "::")
+	parts := strings.Split(opts.Name, "::")
 	if parts[0] == moduleName {
-		return fmt.Errorf("module name cannot be included in class name")
+		return fmt.Errorf("module opts cannot be included in class opts")
 	}
 	fileName := parts[len(parts)-1]
 	filePath := parts[:len(parts)-1]
 
 	classFile := filepath.Join(append([]string{cwd, "manifests"}, append(filePath, fileName+".pp")...)...)
-	className := fmt.Sprintf("%s::%s", moduleName, name)
+	className := fmt.Sprintf("%s::%s", moduleName, opts.Name)
 
 	specFile := filepath.Join(append([]string{cwd, "spec", "classes"}, append(filePath, fileName+"_spec.rb")...)...)
 
@@ -165,11 +187,11 @@ func NewClass(name string) error {
 	}
 
 	// Render the class and spec templates
-	renderer := template.NewRenderer()
+	renderer := newRenderer(opts.TemplateDir)
 
-	templates := map[string]string{
-		"class/manifests/class.pp":         filepath.Join(classFile),
-		"class/spec/classes/class_spec.rb": filepath.Join(specFile),
+	templates := []TemplateFile{
+		{FileName: "class/manifests/class.pp", Destination: classFile},
+		{FileName: "class/spec/classes/class_spec.rb", Destination: specFile},
 	}
 
 	data := struct {
@@ -180,18 +202,9 @@ func NewClass(name string) error {
 
 	fmt.Printf("creating class %s...\n", className)
 
-	for tmplName, destPath := range templates {
-		rendered, err := renderer.Render(tmplName, data)
-		if err != nil {
-			return fmt.Errorf("failed to render template %s: %w", tmplName, err)
-		}
-		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
-			return fmt.Errorf("failed to create directory for %s: %w", destPath, err)
-		}
-		if err := os.WriteFile(destPath, []byte(rendered), 0644); err != nil {
-			return fmt.Errorf("failed to write %s: %w", destPath, err)
-		}
-		fmt.Printf("  added file: %s\n", destPath)
+	err = RenderTemplates(renderer, templates, data, false)
+	if err != nil {
+		return fmt.Errorf("failed to render templates: %w", err)
 	}
 
 	return nil

@@ -16,6 +16,7 @@ func (a *App) newCmd() *cobra.Command {
 		Use:   "new",
 		Short: "Create new things",
 	}
+	cmd.PersistentFlags().StringP("template-dir", "t", "", "Path to custom template directory")
 	cmd.AddCommand(a.newModuleCmd())
 	cmd.AddCommand(a.newClassCmd())
 	return cmd
@@ -33,6 +34,11 @@ func (a *App) newModuleCmd() *cobra.Command {
 			source, _ := cmd.Flags().GetString("source")
 			author, _ := cmd.Flags().GetString("author")
 			force, _ := cmd.Flags().GetBool("force")
+			templateDir, _ := cmd.InheritedFlags().GetString("template-dir")
+
+			if templateDir == "" {
+				templateDir = a.Config.TemplateDir
+			}
 
 			if forgeUser == "" {
 				forgeUser = a.Config.ForgeUsername
@@ -64,13 +70,14 @@ func (a *App) newModuleCmd() *cobra.Command {
 			}
 
 			opts := scaffold.Options{
-				ForgeUser: forgeUser,
-				Name:      args[0],
-				License:   license,
-				Summary:   summary,
-				Source:    source,
-				Author:    author,
-				Force:     force,
+				ForgeUser:   forgeUser,
+				Name:        args[0],
+				License:     license,
+				Summary:     summary,
+				Source:      source,
+				Author:      author,
+				Force:       force,
+				TemplateDir: templateDir,
 			}
 
 			skipInterview, _ := cmd.Flags().GetBool("skip-interview")
@@ -122,7 +129,17 @@ func (a *App) newClassCmd() *cobra.Command {
 		Short: "Create a new Puppet class",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			err := scaffold.NewClass(args[0])
+			templateDir, _ := cmd.Flags().GetString("template-dir")
+
+			if templateDir == "" {
+				templateDir = a.Config.TemplateDir
+			}
+
+			opts := scaffold.ComponentOptions{
+				Name:        args[0],
+				TemplateDir: templateDir,
+			}
+			err := scaffold.NewClass(opts)
 			if err != nil {
 				return err
 			}
