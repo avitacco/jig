@@ -104,6 +104,21 @@ func NewModule(opts Options) error {
 		}
 	}
 
+	emptyDirs := []string{"data", "examples", "files", "tasks", "templates"}
+	for _, dir := range emptyDirs {
+		dest := filepath.Join(moduleDir, dir, ".gitkeep")
+		rendered, err := renderer.Render("common/gitkeep", nil)
+		if err != nil {
+			return fmt.Errorf("failed to render template %s: %w", "common/gitkeep", err)
+		}
+		if err := os.MkdirAll(filepath.Dir(dest), 0755); err != nil {
+			return fmt.Errorf("failed to create directory for %s: %w", dest, err)
+		}
+		if err := os.WriteFile(dest, []byte(rendered), 0644); err != nil {
+			return fmt.Errorf("failed to write %s: %w", dest, err)
+		}
+	}
+
 	fmt.Printf("Created new module %s in %s\n", opts.Name, moduleDir)
 	return nil
 }
