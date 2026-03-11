@@ -19,21 +19,21 @@ binary with no external runtime required.
 jig is under active development. The table below reflects the current state of
 planned functionality.
 
-| Command            | Subcommand        | Status    |
-|--------------------|-------------------|-----------|
-| `new`              | `module`          | ✅ Working |
-| `new`              | `class`           | 🔲 Planned |
-| `new`              | `defined_type`    | 🔲 Planned |
-| `new`              | `fact`            | 🔲 Planned |
-| `new`              | `function`        | 🔲 Planned |
-| `new`              | `provider`        | 🔲 Planned |
-| `new`              | `task`            | 🔲 Planned |
-| `new`              | `test`            | 🔲 Planned |
-| `new`              | `transport`       | 🔲 Planned |
-| `--skip-interview` |                   | ✅ Working |
-| Template override  |                   | 🔲 Planned |
-| `build`            |                   | 🔲 Planned |
-| `release`          |                   | 🔲 Planned |
+| Command            | Subcommand     | Status     |
+|--------------------|----------------|------------|
+| `new`              | `module`       | ✅ Working  |
+| `new`              | `class`        | ✅ Working  |
+| `new`              | `defined_type` | 🔲 Planned |
+| `new`              | `fact`         | 🔲 Planned |
+| `new`              | `function`     | 🔲 Planned |
+| `new`              | `provider`     | 🔲 Planned |
+| `new`              | `task`         | 🔲 Planned |
+| `new`              | `test`         | 🔲 Planned |
+| `new`              | `transport`    | 🔲 Planned |
+| `--skip-interview` |                | ✅ Working  |
+| Template override  |                | 🔲 Planned |
+| `build`            |                | 🔲 Planned |
+| `release`          |                | 🔲 Planned |
 
 ## Installation
 
