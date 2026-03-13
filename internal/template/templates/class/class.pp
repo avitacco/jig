@@ -3,5 +3,6 @@
 # A description of what this class does
 #
 # @example
-#   include {{.ClassName}}
-class {{.ClassName}} {}
+#   include {{.Name}}
+class {{.Name}} {
+}

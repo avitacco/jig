@@ -19,6 +19,7 @@ func (a *App) newCmd() *cobra.Command {
 	cmd.PersistentFlags().StringP("template-dir", "t", "", "Path to custom template directory")
 	cmd.AddCommand(a.newModuleCmd())
 	cmd.AddCommand(a.newClassCmd())
+	cmd.AddCommand(a.newDefinedTypeCmd())
 	return cmd
 }
 
@@ -140,6 +141,32 @@ func (a *App) newClassCmd() *cobra.Command {
 				TemplateDir: templateDir,
 			}
 			err := scaffold.NewClass(opts)
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+	}
+	return cmd
+}
+
+func (a *App) newDefinedTypeCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "defined_type <name>",
+		Short: "Create a new Puppet defined type",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			templateDir, _ := cmd.Flags().GetString("template-dir")
+
+			if templateDir == "" {
+				templateDir = a.Config.TemplateDir
+			}
+
+			opts := scaffold.ComponentOptions{
+				Name:        args[0],
+				TemplateDir: templateDir,
+			}
+			err := scaffold.NewDefinedType(opts)
 			if err != nil {
 				return err
 			}

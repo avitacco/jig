@@ -45,6 +45,37 @@ func BackupDir(path string) error {
 	return os.Rename(path, backupName)
 }
 
+func GetMetadata() (module.Metadata, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return module.Metadata{}, fmt.Errorf("failed to get current working directory: %w", err)
+	}
+	if _, err := os.Stat(filepath.Join(cwd, "metadata.json")); err != nil {
+		return module.Metadata{}, fmt.Errorf("%s is not a valid module directory", cwd)
+	}
+
+	// Read the module metadata
+	metadata, err := module.ReadMetadata(filepath.Join(cwd, "metadata.json"))
+	if err != nil {
+		return module.Metadata{}, fmt.Errorf("failed to read module metadata: %w", err)
+	}
+
+	return metadata, nil
+}
+
+func ConstructDestinationFilename(name string, moduleName string, prefix string, suffix string) (string, error) {
+	parts := strings.Split(name, "::")
+	if parts[0] == moduleName {
+		return "", fmt.Errorf("module name should not be included in class name")
+	}
+	fileName := parts[len(parts)-1]
+	filePath := parts[:len(parts)-1]
+
+	pathParts := append([]string{prefix}, filePath...)
+	pathParts = append(pathParts, fileName+suffix)
+	return filepath.Join(pathParts...), nil
+}
+
 func RenderTemplates(renderer *template.Renderer, templateFiles []TemplateFile, data any, overwrite bool) error {
 	for _, template := range templateFiles {
 		// Check if the destination file already exists and if it should be overwritten.
@@ -149,60 +180,123 @@ func NewModule(opts Options) error {
 }
 
 func NewClass(opts ComponentOptions) error {
-	// Get the cwd and check if it's a module directory (contains a metadata.json file)
-	cwd, err := os.Getwd()
+	// Attempt to load the module metadata
+	metadata, err := GetMetadata()
 	if err != nil {
-		return fmt.Errorf("failed to get working directory: %w", err)
-	}
-	if _, err := os.Stat(filepath.Join(cwd, "metadata.json")); err != nil {
-		return fmt.Errorf("%s is not a valid module directory", cwd)
-	}
-
-	// Read the module metadata
-	metadata, err := module.ReadMetadata(filepath.Join(cwd, "metadata.json"))
-	if err != nil {
-		return fmt.Errorf("failed to read module metadata: %w", err)
+		return fmt.Errorf("failed to get metadata: %w", err)
 	}
 
 	moduleName := metadata.ModuleName()
 
-	// Figure out the filename for the class
-	// Needs to handle several cases,
-	// 1. module::classname (should raise an error, don't give module opts)
-	// 2. sub::module::class::names (should be converted to sub/module/class/names.pp)
-	// 3. classname (should be converted to classname.pp)
-	parts := strings.Split(opts.Name, "::")
-	if parts[0] == moduleName {
-		return fmt.Errorf("module opts cannot be included in class opts")
+	// Construct the class and spec file paths and the class name
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get working directory: %w", err)
 	}
-	fileName := parts[len(parts)-1]
-	filePath := parts[:len(parts)-1]
 
-	classFile := filepath.Join(append([]string{cwd, "manifests"}, append(filePath, fileName+".pp")...)...)
+	classFile, err := ConstructDestinationFilename(
+		opts.Name,
+		moduleName,
+		filepath.Join(append([]string{cwd, "manifests"})...),
+		".pp",
+	)
+
+	specFile, err := ConstructDestinationFilename(
+		opts.Name,
+		moduleName,
+		filepath.Join(append([]string{cwd, "spec", "classes"})...),
+		"_spec.rb",
+	)
+
 	className := fmt.Sprintf("%s::%s", moduleName, opts.Name)
-
-	specFile := filepath.Join(append([]string{cwd, "spec", "classes"}, append(filePath, fileName+"_spec.rb")...)...)
 
 	// Check if the class file already exists
 	if _, err := os.Stat(classFile); err == nil {
-		return fmt.Errorf("class %s already exists", fileName)
+		return fmt.Errorf("class %s already exists: %s", className, classFile)
 	}
 
 	// Render the class and spec templates
 	renderer := newRenderer(opts.TemplateDir)
 
 	templates := []TemplateFile{
-		{FileName: "class/manifests/class.pp", Destination: classFile},
-		{FileName: "class/spec/classes/class_spec.rb", Destination: specFile},
+		{FileName: "class/class.pp", Destination: classFile},
+		{FileName: "class/class_spec.rb", Destination: specFile},
 	}
 
 	data := struct {
-		ClassName string
+		Name string
 	}{
-		ClassName: className,
+		Name: className,
 	}
 
 	fmt.Printf("creating class %s...\n", className)
+
+	err = RenderTemplates(renderer, templates, data, false)
+	if err != nil {
+		return fmt.Errorf("failed to render templates: %w", err)
+	}
+
+	return nil
+}
+
+func NewDefinedType(opts ComponentOptions) error {
+	metadata, err := GetMetadata()
+	if err != nil {
+		return fmt.Errorf("failed to get metadata: %w", err)
+	}
+
+	moduleName := metadata.ModuleName()
+
+	// Construct the defined_type and spec file paths and the defined_type name
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get working directory: %w", err)
+	}
+
+	typeFile, err := ConstructDestinationFilename(
+		opts.Name,
+		moduleName,
+		filepath.Join(append([]string{cwd, "manifests"})...),
+		".pp",
+	)
+	if err != nil {
+		return fmt.Errorf("failed to construct defined_type file path: %w", err)
+	}
+
+	specFile, err := ConstructDestinationFilename(
+		opts.Name,
+		moduleName,
+		filepath.Join(append([]string{cwd, "spec", "defines"})...),
+		"_spec.rb",
+	)
+	if err != nil {
+		return fmt.Errorf("failed to construct defined_type test file path: %w", err)
+	}
+
+	typeName := fmt.Sprintf("%s::%s", moduleName, opts.Name)
+
+	// Check if the defined_type or test file already exists
+	if _, err := os.Stat(typeFile); err == nil {
+		return fmt.Errorf("defined_type %s already exists: %s", typeName, typeFile)
+	}
+	if _, err := os.Stat(specFile); err == nil {
+		return fmt.Errorf("defined_type %s test already exists: %s", typeName, specFile)
+	}
+
+	renderer := newRenderer(opts.TemplateDir)
+
+	templates := []TemplateFile{
+		{FileName: "type/defined_type.pp", Destination: typeFile},
+		{FileName: "type/defined_type_spec.rb", Destination: specFile},
+	}
+
+	data := struct {
+		Name string
+	}{
+		Name: typeName,
+	}
+
+	fmt.Printf("creating defined_type %s...\n", typeName)
 
 	err = RenderTemplates(renderer, templates, data, false)
 	if err != nil {
