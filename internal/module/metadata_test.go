@@ -189,3 +189,53 @@ func TestWrite(t *testing.T) {
 		}
 	})
 }
+
+func TestReadMetadata_PathIsDirectory(t *testing.T) {
+	// Passing a directory path instead of a file should error, not panic.
+	dir := t.TempDir()
+	_, err := ReadMetadata(dir)
+	if err == nil {
+		t.Error("expected error when path is a directory, got nil")
+	}
+}
+
+func TestWrite_PathIsDirectory(t *testing.T) {
+	// Passing a directory path should error, not silently succeed or panic.
+	dir := t.TempDir()
+	m := NewMetadata("mymodule", "myuser", "My Name")
+	err := m.Write(dir)
+	if err == nil {
+		t.Error("expected error when write path is a directory, got nil")
+	}
+}
+
+func TestNewMetadata_EmptyFields(t *testing.T) {
+	// Empty forge user or name produces a malformed Name field.
+	// These document current behavior -- callers are responsible for
+	// validating inputs before calling NewMetadata.
+	cases := []struct {
+		name       string
+		moduleName string
+		forgeUser  string
+		expected   string
+	}{
+		{"empty forge user", "mymodule", "", "-mymodule"},
+		{"empty module name", "", "myuser", "myuser-"},
+		{"both empty", "", "", "-"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := NewMetadata(tc.moduleName, tc.forgeUser, "author")
+			if m.Name != tc.expected {
+				t.Errorf("Name: got %q, want %q", m.Name, tc.expected)
+			}
+			// Validate should catch the malformed name
+			results := m.Validate()
+			warnings := findResults(results, "name", Warning)
+			if len(warnings) == 0 {
+				t.Errorf("expected Validate to warn about malformed name %q", m.Name)
+			}
+		})
+	}
+}

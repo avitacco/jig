@@ -66,16 +66,54 @@ func GetMetadata(dir string) (module.Metadata, error) {
 }
 
 func ConstructDestinationFilename(name string, moduleName string, prefix string, suffix string) (string, error) {
+	if name == "" {
+		return "", fmt.Errorf("name cannot be empty")
+	}
+
 	parts := strings.Split(name, "::")
+
+	for _, part := range parts {
+		if part == "" {
+			return "", fmt.Errorf("name %q contains an empty component (check for leading, trailing, or consecutive '::')", name)
+		}
+		if strings.ContainsAny(part, "/\\") {
+			return "", fmt.Errorf("name %q contains an invalid path separator in component %q", name, part)
+		}
+		if part == ".." || part == "." {
+			return "", fmt.Errorf("name %q contains an invalid component %q", name, part)
+		}
+	}
+
 	if parts[0] == moduleName {
 		return "", fmt.Errorf("module name should not be included in class name")
 	}
+
 	fileName := parts[len(parts)-1]
 	filePath := parts[:len(parts)-1]
 
 	pathParts := append([]string{prefix}, filePath...)
 	pathParts = append(pathParts, fileName+suffix)
 	return filepath.Join(pathParts...), nil
+}
+
+func validateComponentName(name string) error {
+	if name == "" {
+		return fmt.Errorf("name cannot be empty")
+	}
+	if strings.ContainsAny(name, "/\\") {
+		return fmt.Errorf("name %q contains an invalid path separator", name)
+	}
+	if name == ".." || name == "." {
+		return fmt.Errorf("name %q is not a valid component name", name)
+	}
+	// Guard against names that would escape the target directory when joined.
+	// filepath.Join cleans the path, so "foo/../bar" becomes "bar" -- we catch
+	// this by checking the cleaned result stays within a known base.
+	cleaned := filepath.Join("base", name)
+	if !strings.HasPrefix(cleaned, filepath.Join("base", "")) {
+		return fmt.Errorf("name %q would escape the target directory", name)
+	}
+	return nil
 }
 
 func RenderTemplates(renderer Renderer, templateFiles []TemplateFile, data any, overwrite bool) error {
@@ -100,6 +138,10 @@ func RenderTemplates(renderer Renderer, templateFiles []TemplateFile, data any, 
 }
 
 func NewModule(opts Options) error {
+	if err := validateComponentName(opts.Name); err != nil {
+		return fmt.Errorf("invalid module name: %w", err)
+	}
+
 	baseDir := opts.TargetDir
 	if baseDir == "" {
 		cwd, err := os.Getwd()

@@ -123,3 +123,61 @@ func TestValidate_NameFormat(t *testing.T) {
 		})
 	}
 }
+
+func TestValidate_VersionFormat(t *testing.T) {
+	cases := []struct {
+		name    string
+		version string
+		wantErr bool
+	}{
+		{"valid semver", "1.0.0", false},
+		{"major minor patch", "10.20.30", false},
+		{"not semver", "not-a-version", true},
+		{"partial semver", "1.0", true},
+		{"too many parts", "1.0.0.0", true},
+		{"leading v", "v1.0.0", true},
+		{"empty", "", true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := validMetadata()
+			m.Version = tc.version
+			results := m.Validate()
+			errors := findResults(results, "version", Error)
+			if tc.wantErr && len(errors) == 0 {
+				t.Errorf("expected version Error for %q, got none", tc.version)
+			}
+			if !tc.wantErr && len(errors) > 0 {
+				t.Errorf("unexpected version Error for %q: %v", tc.version, errors)
+			}
+		})
+	}
+}
+
+func TestValidate_NameEdgeCases(t *testing.T) {
+	cases := []struct {
+		name        string
+		moduleName  string
+		wantWarning bool
+	}{
+		{"name with spaces", "author-my module", true},
+		{"name with slash", "author/module", true},
+		{"name with dot", "author.name-module", true},
+		{"unicode characters", "authör-module", true},
+		{"only delimiter", "-", true},
+		{"whitespace only", "   ", true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := validMetadata()
+			m.Name = tc.moduleName
+			results := m.Validate()
+			warnings := findResults(results, "name", Warning)
+			if tc.wantWarning && len(warnings) == 0 {
+				t.Errorf("expected name Warning for %q, got none", tc.moduleName)
+			}
+		})
+	}
+}
