@@ -130,21 +130,23 @@ func (a *App) newClassCmd() *cobra.Command {
 		Short: "Create a new Puppet class",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			templateDir, _ := cmd.Flags().GetString("template-dir")
+			templateDir, _ := cmd.InheritedFlags().GetString("template-dir")
 
 			if templateDir == "" {
 				templateDir = a.Config.TemplateDir
 			}
 
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("failed to get working directory: %w", err)
+			}
+
 			opts := scaffold.ComponentOptions{
 				Name:        args[0],
 				TemplateDir: templateDir,
+				WorkDir:     cwd,
 			}
-			err := scaffold.NewClass(opts)
-			if err != nil {
-				return err
-			}
-			return nil
+			return scaffold.NewClass(opts)
 		},
 	}
 	return cmd
@@ -156,21 +158,23 @@ func (a *App) newDefinedTypeCmd() *cobra.Command {
 		Short: "Create a new Puppet defined type",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			templateDir, _ := cmd.Flags().GetString("template-dir")
+			templateDir, _ := cmd.InheritedFlags().GetString("template-dir")
 
 			if templateDir == "" {
 				templateDir = a.Config.TemplateDir
 			}
 
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("failed to get working directory: %w", err)
+			}
+
 			opts := scaffold.ComponentOptions{
 				Name:        args[0],
 				TemplateDir: templateDir,
+				WorkDir:     cwd,
 			}
-			err := scaffold.NewDefinedType(opts)
-			if err != nil {
-				return err
-			}
-			return nil
+			return scaffold.NewDefinedType(opts)
 		},
 	}
 	return cmd

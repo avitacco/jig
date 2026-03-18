@@ -29,24 +29,41 @@ func NewRendererWithExternalDir(dir string) *Renderer {
 }
 
 func (r Renderer) Render(templateName string, data any) (string, error) {
+	if templateName == "" {
+		return "", fmt.Errorf("template name cannot be empty")
+	}
+
+	// Prevent path traversal when reading from the external directory.
+	// We check the embedded path too for consistency -- embed.FS would
+	// reject ".." internally, but rejecting it here gives a clearer error.
+	cleaned := filepath.Clean(templateName)
+	if strings.HasPrefix(cleaned, "..") || filepath.IsAbs(cleaned) {
+		return "", fmt.Errorf("invalid template name %q: must be a relative path within the template directory", templateName)
+	}
+
 	var content []byte
 	var err error
 
 	if r.externalDir != "" {
-		content, err = os.ReadFile(filepath.Join(r.externalDir, templateName))
+		externalPath := filepath.Join(r.externalDir, cleaned)
+		// Double-check the joined path stays within the external dir.
+		if !strings.HasPrefix(externalPath, filepath.Clean(r.externalDir)+string(filepath.Separator)) {
+			return "", fmt.Errorf("invalid template name %q: resolves outside template directory", templateName)
+		}
+
+		content, err = os.ReadFile(externalPath)
 		if err != nil {
 			if !os.IsNotExist(err) {
 				return "", fmt.Errorf("failed to read external template %s: %w", templateName, err)
 			}
 			// file not found in external dir, fall through to embedded templates
-			content, err = embeddedTemplates.ReadFile("templates/" + templateName)
+			content, err = embeddedTemplates.ReadFile("templates/" + cleaned)
 			if err != nil {
 				return "", fmt.Errorf("failed to read embedded template %s: %w", templateName, err)
 			}
 		}
-
 	} else {
-		content, err = embeddedTemplates.ReadFile("templates/" + templateName)
+		content, err = embeddedTemplates.ReadFile("templates/" + cleaned)
 		if err != nil {
 			return "", fmt.Errorf("failed to read embedded template %s: %w", templateName, err)
 		}

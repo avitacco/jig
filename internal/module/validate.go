@@ -60,6 +60,15 @@ func (m Metadata) Validate() []ValidationResult {
 		})
 	}
 
+	validVersionRe := regexp.MustCompile(`^\d+\.\d+\.\d+$`)
+	if m.Version != "" && !validVersionRe.MatchString(m.Version) {
+		results = append(results, ValidationResult{
+			Level:   Error,
+			Field:   "version",
+			Message: "version must be a valid semver string (MAJOR.MINOR.PATCH)",
+		})
+	}
+
 	if m.Author == "" {
 		results = append(results, ValidationResult{
 			Level:   Error,

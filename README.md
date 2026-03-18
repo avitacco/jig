@@ -42,7 +42,6 @@ planned functionality.
 ### Build from source
 
 Requires Go 1.21 or later.
-
 ```bash
 git clone https://github.com/avitacco/jig.git
 cd jig
@@ -50,7 +49,6 @@ go build -o jig .
 ```
 
 Move the resulting binary somewhere in your `$PATH`:
-
 ```bash
 mv jig /usr/local/bin/
 ```
@@ -63,7 +61,6 @@ No other dependencies or runtimes needed.
 
 Scaffolds a new Puppet module with the standard directory structure and
 metadata.
-
 ```
 jig new module <n> [flags]
 ```
@@ -88,7 +85,6 @@ jig falls back to your system username and full name.
 
 Generates a new Puppet class manifest and its rspec-puppet spec file inside
 the current module directory.
-
 ```
 jig new class <n>
 ```
@@ -121,13 +117,11 @@ Extracts all embedded default templates to a directory on disk. This is useful
 as a starting point for creating your own custom templates. If the destination
 directory already exists it will be renamed with a timestamp suffix before
 writing.
-
 ```
 jig templates dump <destination>
 ```
 
 For example:
-
 ```bash
 jig templates dump ~/.config/jig/templates
 ```
@@ -151,7 +145,6 @@ default templates, then edit the ones you want to change.
 
 Your custom template directory must mirror the structure of jig's embedded
 templates:
-
 ```
 templates/
   common/
@@ -204,7 +197,6 @@ template_dir = "/path/to/templates"
 
 jig looks for a config file at `~/.config/jig/config.toml`. All fields are
 optional. If the file does not exist, jig falls back to sensible defaults.
-
 ```toml
 forge_username = "avitacco"
 author         = "John Doe"
@@ -223,7 +215,6 @@ start is by opening an issue to discuss what you want to work on before sending
 a PR.
 
 ### Project layout
-
 ```
 .
 ├── main.go
@@ -239,11 +230,52 @@ a PR.
         └── templates/  # Embedded default templates
 ```
 
+### Testing
+
+Run the full test suite with:
+```bash
+go test ./...
+```
+
+Tests live alongside the source files they cover (`*_test.go`), which is
+the standard Go convention. The `commands/` and `internal/config/` packages
+do not currently have tests -- the former is thin Cobra wiring and the latter
+is thin Viper wiring, so the internal packages are where the meaningful
+coverage lives.
+
+A few patterns used throughout the test suite that contributors should follow:
+
+- **Table-driven tests** for functions with multiple input variations. Use a
+  `cases := []struct{...}` slice and `t.Run` for each case.
+- **`t.TempDir()`** for any test that touches the filesystem. It is cleaned up
+  automatically after the test and requires no `defer os.Remove`.
+- **`fakeRenderer`** in `internal/scaffold` implements the `scaffold.Renderer`
+  interface and can be used to test template rendering paths without hitting
+  the real embedded templates.
+- **`makeBuildDir`** in `internal/build` and **`makeModuleDir`** in
+  `internal/scaffold` are shared helpers that create realistic on-disk module
+  structures for tests that need them.
+- Both characterization tests (pinning current behavior) and adversarial tests
+  (checking rejection of invalid or malicious input) are expected. When adding
+  a new feature, include both.
+
 ### Design notes for contributors
 
-- Templates are embedded via `go:embed`. External templates take precedence over embedded ones, with per-file fallback to embedded defaults when a custom template is not found.
-- `--force` never deletes existing files outright. It creates a timestamped backup of the target directory first.
-- Module name validation uses a `ValidationResult` type with an iota-based `Severity`. Violations at the `Warning` level do not halt execution.
+- Templates are embedded via `go:embed`. External templates take precedence
+  over embedded ones, with per-file fallback to embedded defaults when a custom
+  template is not found. Template names are validated to prevent path traversal
+  before any file is read.
+- `--force` never deletes existing files outright. It creates a timestamped
+  backup of the target directory first.
+- Module name validation uses a `ValidationResult` type with an iota-based
+  `Severity`. Violations at the `Warning` level do not halt execution. Version
+  strings must be valid semver (`MAJOR.MINOR.PATCH`).
+- Component names (module names, class names, defined type names) are validated
+  to reject empty strings, path separators, and traversal sequences before they
+  are used to construct filesystem paths.
+- `os.Getwd()` is called only in the `commands/` layer. Internal packages
+  receive directory paths as arguments, which keeps them testable without
+  manipulating the process working directory.
 - Config is handled with [Viper](https://github.com/spf13/viper).
 
 ## NOTICE

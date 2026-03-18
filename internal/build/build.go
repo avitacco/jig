@@ -15,9 +15,8 @@ import (
 	gogitignore "github.com/go-git/go-git/v5/plumbing/format/gitignore"
 )
 
-func DoBuild() error {
-	// Get and validate metadata
-	metadata, err := scaffold.GetMetadata()
+func DoBuild(dir string) error {
+	metadata, err := scaffold.GetMetadata(dir)
 	if err != nil {
 		return fmt.Errorf("failed to read metadata: %w", err)
 	}
@@ -32,13 +31,8 @@ func DoBuild() error {
 		}
 	}
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("failed to get working directory: %w", err)
-	}
-
 	// Read .pdkignore and parse patterns line by line
-	pdkIgnoreData, err := os.ReadFile(filepath.Join(cwd, ".pdkignore"))
+	pdkIgnoreData, err := os.ReadFile(filepath.Join(dir, ".pdkignore"))
 	if err != nil {
 		return fmt.Errorf("failed to read .pdkignore: %w", err)
 	}
@@ -52,49 +46,40 @@ func DoBuild() error {
 		patterns = append(patterns, gogitignore.ParsePattern(line, nil))
 	}
 
-	// Hardcode some patterns, I suspect pdk does something similar since
-	// .rubocop.yml is not present in the .pdkignore file, but is never in the
-	// generated build.
 	patterns = append(patterns, gogitignore.ParsePattern(".gitkeep", nil))
 	patterns = append(patterns, gogitignore.ParsePattern(".rubocop.yml", nil))
 
 	matcher := gogitignore.NewMatcher(patterns)
 
-	// Create the pkg directory if it doesn't exist already
-	pkgDir := filepath.Join(cwd, "pkg")
+	pkgDir := filepath.Join(dir, "pkg")
 	if _, err := os.Stat(pkgDir); os.IsNotExist(err) {
 		if err = os.MkdirAll(pkgDir, 0755); err != nil {
 			return fmt.Errorf("failed to create pkg directory: %w", err)
 		}
 	}
 
-	// Generate the archive name
 	archiveName := fmt.Sprintf("%s-%s-%s.tar.gz", metadata.ForgeUsername(), metadata.ModuleName(), metadata.Version)
 	archivePath := filepath.Join(pkgDir, archiveName)
 
-	// Create the archive
 	archiveFile, err := os.Create(archivePath)
 	if err != nil {
 		return fmt.Errorf("failed to create archive file: %w", err)
 	}
 	defer archiveFile.Close()
 
-	// Wrap file with gzip then tar
 	gzWriter := gzip.NewWriter(archiveFile)
 	defer gzWriter.Close()
 	tarWriter := tar.NewWriter(gzWriter)
 	defer tarWriter.Close()
 
-	// Walk the directory and add directories and files to the archive,
-	// excluding ignored files/dirs
 	prefix := fmt.Sprintf("%s-%s-%s", metadata.ForgeUsername(), metadata.ModuleName(), metadata.Version)
 
-	if err := filepath.WalkDir(cwd, func(path string, d fs.DirEntry, err error) error {
+	if err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return fmt.Errorf("failed to walk directory: %w", err)
 		}
 
-		relPath, err := filepath.Rel(cwd, path)
+		relPath, err := filepath.Rel(dir, path)
 		if err != nil {
 			return err
 		}
@@ -103,7 +88,6 @@ func DoBuild() error {
 			return nil
 		}
 
-		// Split relPath into components for the matcher
 		parts := strings.Split(filepath.ToSlash(relPath), "/")
 
 		if matcher.Match(parts, d.IsDir()) {
@@ -113,7 +97,6 @@ func DoBuild() error {
 			return nil
 		}
 
-		// Handle directories
 		if d.IsDir() {
 			info, err := d.Info()
 			if err != nil {
@@ -127,7 +110,6 @@ func DoBuild() error {
 			return tarWriter.WriteHeader(header)
 		}
 
-		// Set up the header for the file
 		info, err := d.Info()
 		if err != nil {
 			return err
