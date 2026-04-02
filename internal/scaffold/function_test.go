@@ -265,3 +265,20 @@ func TestNewFunction_NamespacedOutputContainsFullyQualifiedName(t *testing.T) {
 		t.Errorf("function file content %q does not contain fully-qualified name %q", string(content), "mymodule::sub::myfunc")
 	}
 }
+
+// makeFactTemplateDir creates a temp directory with minimal fact templates.
+func makeFactTemplateDir(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	factDir := filepath.Join(dir, "fact")
+	if err := os.MkdirAll(factDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(factDir, "fact.rb"), []byte("# {{.Name}}\nFacter.add('{{.Name}}') do\n  setcode { nil }\nend\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(factDir, "fact_spec.rb"), []byte("# frozen_string_literal: true\nrequire 'spec_helper'\ndescribe '{{.Name}}' do\nend\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}

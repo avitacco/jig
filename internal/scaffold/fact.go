@@ -8,21 +8,19 @@ import (
 )
 
 func NewFact(opts ComponentOptions) error {
-	// We only run this to see that we're in a valid module directory.
-	// Nothing is ever done with the metadata.
+	if err := validateComponentName(opts.Name); err != nil {
+		return fmt.Errorf("invalid fact name: %w", err)
+	}
+
+	if strings.Contains(opts.Name, "::") {
+		return fmt.Errorf("fact name cannot contain '::'")
+	}
+
 	_, err := GetMetadata(opts.WorkDir)
 	if err != nil {
 		return fmt.Errorf("failed to get metadata: %w", err)
 	}
 
-	// Check to ensure opts.Name doesn't contain '::' as that would be invalid
-	// for a fact name.
-	if strings.Contains(opts.Name, "::") {
-		return fmt.Errorf("fact name cannot contain '::'")
-	}
-
-	// Check to see if a fact by given name already exists in the module, and
-	// return an error if it does.
 	factFileName := filepath.Join(opts.WorkDir, "lib", "facter", opts.Name+".rb")
 	if _, err := os.Stat(factFileName); err == nil {
 		return fmt.Errorf("fact %s already exists: %s", opts.Name, factFileName)
@@ -33,7 +31,6 @@ func NewFact(opts ComponentOptions) error {
 		return fmt.Errorf("fact %s test already exists: %s", opts.Name, factTestFileName)
 	}
 
-	// Set up the templates and render them to disk at the appropriate locations.
 	fmt.Printf("creating fact %s...\n", opts.Name)
 	renderer := newRenderer(opts.TemplateDir)
 
