@@ -27,7 +27,7 @@ planned functionality.
 | `new`              | `fact`         | ✅ Working  |
 | `new`              | `function`     | ✅ Working  |
 | `new`              | `provider`     | 🔲 Planned |
-| `new`              | `task`         | 🔲 Planned |
+| `new`              | `task`         | ✅ Working  |
 | `new`              | `test`         | 🔲 Planned |
 | `new`              | `transport`    | 🔲 Planned |
 | `--skip-interview` |                | ✅ Working  |
@@ -92,6 +92,19 @@ jig new class <n>
 The class name follows standard Puppet naming conventions. Namespaced names
 like `foo::bar` are supported and will generate the correct directory structure
 under `manifests/`. The module name prefix must not be included in the name.
+
+### `jig new task`
+
+Generates a new Puppet task and its metadata file inside the current module
+directory.
+```
+jig new task <n>
+```
+
+Task names must start with a lowercase letter and contain only lowercase
+letters, numbers, and underscores (`[a-z][a-z0-9_]*`). The special name
+`init` is valid and maps the task to the module itself. Namespaced names
+using `::` are not valid for tasks.
 
 **Flags on `jig new`:**
 
@@ -170,6 +183,9 @@ templates/
     spec/
       classes/
         class_spec.rb
+  task/
+    task.sh
+    metadata.json
 ```
 
 ### Configuring the template directory

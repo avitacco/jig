@@ -22,6 +22,7 @@ func (a *App) newCmd() *cobra.Command {
 	cmd.AddCommand(a.newDefinedTypeCmd())
 	cmd.AddCommand(a.newFactCmd())
 	cmd.AddCommand(a.newFunctionCmd())
+	cmd.AddCommand(a.newTaskCmd())
 	return cmd
 }
 
@@ -233,6 +234,34 @@ func (a *App) newFunctionCmd() *cobra.Command {
 				WorkDir:     cwd,
 			}
 			return scaffold.NewFunction(opts)
+		},
+	}
+	return cmd
+}
+
+func (a *App) newTaskCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "task <name>",
+		Short: "Create a new Puppet task",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			templateDir, _ := cmd.InheritedFlags().GetString("template-dir")
+
+			if templateDir == "" {
+				templateDir = a.Config.TemplateDir
+			}
+
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("failed to get working directory: %w", err)
+			}
+
+			opts := scaffold.ComponentOptions{
+				Name:        args[0],
+				TemplateDir: templateDir,
+				WorkDir:     cwd,
+			}
+			return scaffold.NewTask(opts)
 		},
 	}
 	return cmd
