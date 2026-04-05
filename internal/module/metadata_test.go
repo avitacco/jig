@@ -22,7 +22,7 @@ func TestNewMetadata(t *testing.T) {
 	if m.License != "Apache-2.0" {
 		t.Errorf("License: got %q, want %q", m.License, "Apache-2.0")
 	}
-	if len(m.Requirements) != 1 || m.Requirements[0].Name != "puppet" {
+	if len(m.Requirements) != 1 || m.Requirements[0].Name != "openvox" {
 		t.Errorf("Requirements: expected single puppet requirement, got %v", m.Requirements)
 	}
 	if m.Dependencies == nil {

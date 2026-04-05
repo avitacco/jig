@@ -51,7 +51,7 @@ func NewMetadata(name string, forgeUser string, author string) Metadata {
 		Dependencies: []Dependency{},
 		Requirements: []Requirement{
 			{
-				Name:               "puppet",
+				Name:               "openvox",
 				VersionRequirement: ">= 7.0.0 < 9.0.0",
 			},
 		},
