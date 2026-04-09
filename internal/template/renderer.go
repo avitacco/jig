@@ -76,6 +76,15 @@ func (r Renderer) Render(templateName string, data any) (string, error) {
 			}
 			return strings.ToUpper(s[:1]) + s[1:]
 		},
+		"pascalCase": func(s string) string {
+			parts := strings.Split(s, "_")
+			for i, p := range parts {
+				if p != "" {
+					parts[i] = strings.ToUpper(p[:1]) + p[1:]
+				}
+			}
+			return strings.Join(parts, "")
+		},
 	}
 
 	t, err := tmplpkg.New(templateName).Funcs(funcMap).Parse(string(content))

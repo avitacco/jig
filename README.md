@@ -29,7 +29,7 @@ planned functionality.
 | `new`              | `provider`     | ✅ Working  |
 | `new`              | `task`         | ✅ Working  |
 | `new`              | `test`         | 🔲 Planned |
-| `new`              | `transport`    | 🔲 Planned |
+| `new`              | `transport`    | ✅ Working  |
 | `--skip-interview` |                | ✅ Working  |
 | Template override  |                | ✅ Working  |
 | `templates`        | `dump`         | ✅ Working  |
@@ -161,6 +161,26 @@ letters, numbers, and underscores (`[a-z][a-z0-9_]*`). The special name
 `init` is valid and maps the task to the module itself. Namespaced names
 using `::` are not valid for tasks.
 
+### `jig new transport`
+
+Generates a new Puppet
+[Resource API](https://github.com/puppetlabs/puppet-resource_api) transport
+and its associated files inside the current module directory.
+```
+jig new transport <n>
+```
+
+Transport names must start with a lowercase letter and contain only lowercase
+letters, numbers, and underscores (`[a-z][a-z0-9_]*`). Snake case names like
+`my_device` are valid and will be converted to PascalCase (`MyDevice`) where
+required by Ruby class naming conventions. Five files are generated:
+
+- `lib/puppet/transport/<n>.rb` — the transport implementation
+- `lib/puppet/transport/schema/<n>.rb` — the Resource API transport schema
+- `lib/puppet/util/network_device/<n>/device.rb` — legacy device compatibility shim
+- `spec/unit/puppet/transport/<n>_spec.rb` — spec file for the transport
+- `spec/unit/puppet/transport/schema/<n>_spec.rb` — spec file for the schema
+
 **Flags on `jig new`:**
 
 The following flag is available on all `jig new` subcommands:
@@ -252,6 +272,13 @@ templates/
   task/
     task.sh
     metadata.json
+  transport/
+    transport.rb
+    transport_spec.rb
+    device.rb
+    schema/
+      schema.rb
+      schema_spec.rb
 ```
 
 ### Configuring the template directory
