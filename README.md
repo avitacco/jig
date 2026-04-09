@@ -26,7 +26,7 @@ planned functionality.
 | `new`              | `defined_type` | ✅ Working  |
 | `new`              | `fact`         | ✅ Working  |
 | `new`              | `function`     | ✅ Working  |
-| `new`              | `provider`     | 🔲 Planned |
+| `new`              | `provider`     | ✅ Working  |
 | `new`              | `task`         | ✅ Working  |
 | `new`              | `test`         | 🔲 Planned |
 | `new`              | `transport`    | 🔲 Planned |
@@ -92,6 +92,61 @@ jig new class <n>
 The class name follows standard Puppet naming conventions. Namespaced names
 like `foo::bar` are supported and will generate the correct directory structure
 under `manifests/`. The module name prefix must not be included in the name.
+
+### `jig new defined_type`
+
+Generates a new Puppet defined type manifest and its rspec-puppet spec file
+inside the current module directory.
+```
+jig new defined_type <n>
+```
+
+Defined type names follow the same conventions as class names. Namespaced
+names like `foo::bar` are supported and will generate the correct directory
+structure under `manifests/`. The module name prefix must not be included in
+the name.
+
+### `jig new fact`
+
+Generates a new custom Facter fact and its spec file inside the current module
+directory.
+```
+jig new fact <n>
+```
+
+Fact names may not contain `::`. The generated fact is placed in
+`lib/facter/<name>.rb` and its spec in `spec/unit/facter/<name>_spec.rb`.
+
+### `jig new function`
+
+Generates a new Puppet language function and its spec file inside the current
+module directory.
+```
+jig new function <n>
+```
+
+Function names follow standard Puppet naming conventions. The module name is
+automatically prepended to form the fully qualified function name
+(`<module>::<name>`). The generated function is placed in
+`functions/<name>.pp` and its spec in `spec/functions/<name>_spec.rb`.
+
+### `jig new provider`
+
+Generates a new Puppet resource type and provider using the
+[Resource API](https://github.com/puppetlabs/puppet-resource_api), along with
+spec files for both, inside the current module directory.
+```
+jig new provider <n>
+```
+
+Provider names must start with a lowercase letter and contain only lowercase
+letters, numbers, and underscores (`[a-z][a-z0-9_]*`). Four files are
+generated:
+
+- `lib/puppet/type/<name>.rb` — the Resource API type definition
+- `lib/puppet/provider/<name>/<name>.rb` — the Resource API simple provider
+- `spec/unit/puppet/type/<name>_spec.rb` — spec file for the type
+- `spec/unit/puppet/provider/<name>/<name>_spec.rb` — spec file for the provider
 
 ### `jig new task`
 
@@ -178,11 +233,22 @@ templates/
     rubocop.yml
     hiera.yaml
   class/
-    manifests/
-      class.pp
-    spec/
-      classes/
-        class_spec.rb
+    class.pp
+    class_spec.rb
+  type/
+    defined_type.pp
+    defined_type_spec.rb
+  fact/
+    fact.rb
+    fact_spec.rb
+  function/
+    function.pp
+    function_spec.rb
+  provider/
+    type.rb
+    type_spec.rb
+    provider.rb
+    provider_spec.rb
   task/
     task.sh
     metadata.json

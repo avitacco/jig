@@ -69,7 +69,16 @@ func (r Renderer) Render(templateName string, data any) (string, error) {
 		}
 	}
 
-	t, err := tmplpkg.New(templateName).Parse(string(content))
+	funcMap := tmplpkg.FuncMap{
+		"upperFirst": func(s string) string {
+			if s == "" {
+				return ""
+			}
+			return strings.ToUpper(s[:1]) + s[1:]
+		},
+	}
+
+	t, err := tmplpkg.New(templateName).Funcs(funcMap).Parse(string(content))
 	if err != nil {
 		return "", fmt.Errorf("failed to parse template %s: %w", templateName, err)
 	}
