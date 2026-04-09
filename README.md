@@ -35,7 +35,7 @@ planned functionality.
 | `templates`        | `dump`         | ✅ Working  |
 | `templates`        | `resolve`      | 🔲 Planned |
 | `build`            |                | ✅ Working  |
-| `release`          |                | 🔲 Planned |
+| `release`          |                | ✅ Working  |
 
 ## Installation
 
@@ -180,25 +180,6 @@ An error is returned if the manifest does not exist, if no matching class or
 defined type declaration is found in the file, or if a spec file for the named
 resource already exists.
 
-### `jig new test`
-
-Generates a unit test for an existing class or defined type inside the current
-module directory.
-```
-jig new test <n>
-```
-
-jig looks up the named resource by finding its manifest under `manifests/` and
-inspects the file to determine whether it contains a class or a defined type.
-The spec file is written to `spec/classes/` for classes or `spec/defines/` for
-defined types. The name follows the same conventions as `jig new class` and
-`jig new defined_type` -- namespaced names like `foo::bar` are supported, and
-the module name prefix must not be included.
-
-An error is returned if the manifest does not exist, if no matching class or
-defined type declaration is found in the file, or if a spec file for the named
-resource already exists.
-
 ### `jig new transport`
 
 Generates a new Puppet
@@ -254,6 +235,50 @@ jig templates dump ~/.config/jig/templates
 
 You can then edit the files in the destination directory and point jig at them
 using `--template-dir` or the `template_dir` config key.
+
+### `jig build`
+
+Builds a module package suitable for uploading to the Puppet Forge. The
+package is written to `pkg/<forge-user>-<module>-<version>.tar.gz` relative
+to the current directory.
+```
+jig build
+```
+
+Metadata validation runs before the build. Errors abort the build; warnings
+are printed and execution continues.
+
+### `jig release`
+
+Validates metadata, sets the version, builds the module package, and publishes
+it to the Puppet Forge.
+```
+jig release [flags]
+```
+
+The release sequence is:
+
+1. Validate the version string and module metadata (unless `--skip-validation`).
+2. Write the new version into `metadata.json`.
+3. Build the module package (unless `--skip-build`).
+4. Upload the package to the Forge (unless `--skip-publish`).
+
+A Forge API token is required for publishing. Set `forge_token` in your config
+file or pass it via `--token`. You can generate a token from your account page
+on the [Puppet Forge](https://forge.puppet.com).
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `-v, --version` | Version to release, e.g. `1.2.3` (required) |
+| `-k, --token` | Forge API token (overrides `forge_token` in config) |
+| `--skip-validation` | Skip metadata validation |
+| `--skip-build` | Skip building the module archive |
+| `--skip-publish` | Skip publishing to the Forge |
+
+If `--skip-build` is set without `--skip-publish`, jig expects the archive to
+already exist under `pkg/`. An error is returned if it is not found.
 
 ## Template Overrides
 
@@ -399,9 +424,12 @@ A few patterns used throughout the test suite that contributors should follow:
 - **`fakeRenderer`** in `internal/scaffold` implements the `scaffold.Renderer`
   interface and can be used to test template rendering paths without hitting
   the real embedded templates.
-- **`makeBuildDir`** in `internal/build` and **`makeModuleDir`** in
-  `internal/scaffold` are shared helpers that create realistic on-disk module
-  structures for tests that need them.
+- **`makeBuildDir`** in `internal/build`, **`makeModuleDir`** in
+  `internal/scaffold`, and **`makeModuleDir`** in `internal/release` are
+  shared helpers that create realistic on-disk module structures for tests
+  that need them. **`fakePublisher`** in `internal/release` implements the
+  `forge.Publisher` interface for testing the release sequence without making
+  real HTTP calls.
 - Both characterization tests (pinning current behavior) and adversarial tests
   (checking rejection of invalid or malicious input) are expected. When adding
   a new feature, include both.
@@ -416,7 +444,12 @@ A few patterns used throughout the test suite that contributors should follow:
   backup of the target directory first.
 - Module name validation uses a `ValidationResult` type with an iota-based
   `Severity`. Violations at the `Warning` level do not halt execution. Version
-  strings must be valid semver (`MAJOR.MINOR.PATCH`).
+  strings must be valid semver (`MAJOR.MINOR.PATCH`). URL fields (`source`,
+  `project_page`, `issues_url`) must use `http` or `https` schemes when
+  present; invalid URLs are errors that abort the build and release.
+- The Forge HTTP client (`internal/forge`) is hidden behind a `Publisher`
+  interface so the release sequence can be tested without making real network
+  requests.
 - Component names (module names, class names, defined type names) are validated
   to reject empty strings, path separators, and traversal sequences before they
   are used to construct filesystem paths.

@@ -1,6 +1,9 @@
 package module
 
-import "regexp"
+import (
+	"net/url"
+	"regexp"
+)
 
 type Severity int
 
@@ -101,5 +104,37 @@ func (m Metadata) Validate() []ValidationResult {
 		})
 	}
 
+	if m.Source != "" && !isValidURL(m.Source) {
+		results = append(results, ValidationResult{
+			Level:   Error,
+			Field:   "source",
+			Message: "source must be a valid URL",
+		})
+	}
+
+	if m.ProjectPage != "" && !isValidURL(m.ProjectPage) {
+		results = append(results, ValidationResult{
+			Level:   Error,
+			Field:   "project_page",
+			Message: "project_page must be a valid URL",
+		})
+	}
+
+	if m.IssuesURL != "" && !isValidURL(m.IssuesURL) {
+		results = append(results, ValidationResult{
+			Level:   Error,
+			Field:   "issues_url",
+			Message: "issues_url must be a valid URL",
+		})
+	}
+
 	return results
+}
+
+func isValidURL(raw string) bool {
+	u, err := url.ParseRequestURI(raw)
+	if err != nil {
+		return false
+	}
+	return u.Scheme == "http" || u.Scheme == "https"
 }

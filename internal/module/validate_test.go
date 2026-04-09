@@ -181,3 +181,39 @@ func TestValidate_NameEdgeCases(t *testing.T) {
 		})
 	}
 }
+
+func TestValidate_URLFields(t *testing.T) {
+	cases := []struct {
+		name      string
+		mutate    func(*Metadata)
+		field     string
+		wantError bool
+	}{
+		{"valid source URL", func(m *Metadata) { m.Source = "https://github.com/author/module" }, "source", false},
+		{"source http scheme", func(m *Metadata) { m.Source = "http://example.com" }, "source", false},
+		{"source not a URL", func(m *Metadata) { m.Source = "not-a-url" }, "source", true},
+		{"source missing scheme", func(m *Metadata) { m.Source = "github.com/author/module" }, "source", true},
+		{"source ftp scheme", func(m *Metadata) { m.Source = "ftp://example.com" }, "source", true},
+		{"valid project_page", func(m *Metadata) { m.ProjectPage = "https://example.com" }, "project_page", false},
+		{"project_page not a URL", func(m *Metadata) { m.ProjectPage = "not-a-url" }, "project_page", true},
+		{"project_page empty is ok", func(m *Metadata) { m.ProjectPage = "" }, "project_page", false},
+		{"valid issues_url", func(m *Metadata) { m.IssuesURL = "https://github.com/author/module/issues" }, "issues_url", false},
+		{"issues_url not a URL", func(m *Metadata) { m.IssuesURL = "not-a-url" }, "issues_url", true},
+		{"issues_url empty is ok", func(m *Metadata) { m.IssuesURL = "" }, "issues_url", false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := validMetadata()
+			tc.mutate(&m)
+			results := m.Validate()
+			errors := findResults(results, tc.field, Error)
+			if tc.wantError && len(errors) == 0 {
+				t.Errorf("expected Error for field %q, got none. all results: %v", tc.field, results)
+			}
+			if !tc.wantError && len(errors) > 0 {
+				t.Errorf("unexpected Error for field %q: %v", tc.field, errors)
+			}
+		})
+	}
+}
