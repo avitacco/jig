@@ -36,6 +36,9 @@ planned functionality.
 | `templates`        | `resolve`      | 🔲 Planned |
 | `build`            |                | ✅ Working  |
 | `release`          |                | ✅ Working  |
+| `validate`         |                | ✅ Working  |
+| `test`             | `unit`         | ✅ Working  |
+| `update`           |                | ✅ Working  |
 
 ## Installation
 
@@ -279,6 +282,42 @@ on the [Puppet Forge](https://forge.puppet.com).
 
 If `--skip-build` is set without `--skip-publish`, jig expects the archive to
 already exist under `pkg/`. An error is returned if it is not found.
+
+### `jig validate`
+
+Runs validation and linting against the current module. This is a passthrough
+command that shells out to `bundle exec rake validate lint`, so it requires
+a Ruby toolchain and the module's bundled gems to be installed.
+```
+jig validate [args...]
+```
+
+Any additional arguments are passed through verbatim to the underlying rake
+invocation.
+
+### `jig test unit`
+
+Runs the module's unit tests. This is a passthrough command that shells out to
+`bundle exec rake spec`, so it requires a Ruby toolchain and the module's
+bundled gems to be installed.
+```
+jig test unit [args...]
+```
+
+Any additional arguments are passed through verbatim to the underlying rake
+invocation.
+
+### `jig update`
+
+Synchronises the module's managed files from the module's templates. This is a
+passthrough command that shells out to `bundle exec msync update`, so it
+requires a Ruby toolchain and the module's bundled gems to be installed.
+```
+jig update [args...]
+```
+
+Any additional arguments are passed through verbatim to the underlying msync
+invocation.
 
 ## Template Overrides
 
